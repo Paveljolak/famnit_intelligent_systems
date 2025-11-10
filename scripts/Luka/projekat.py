@@ -33,17 +33,18 @@ from famnit_gym.envs import mill
 from famnit_gym.wrappers.mill import DelayMove
 import random
 
-def minimax(model, depth, alpha, beta, maximizing_player, closed_morris):
+def minimax(model, depth, alpha, beta, maximizing_player):
     if (depth==0 or model.game_over()):
-        eval = evaluate(model, maximizing_player, closed_morris)
-        return eval, None
+        eval_p1 = evaluate(model, 1)
+        eval_p2 = evaluate(model, 2)
+        return eval_p1-eval_p2, None
     if maximizing_player:
         max_eval = float('-inf')
         best_moves = []
         for move in model.legal_moves(player=1):
             model_clone = model.clone()
             model_clone.make_move(player=1, move=move)
-            evaluation, _ = minimax(model_clone, depth-1, alpha, beta, False, False if move[2] == 0 else True)
+            evaluation, _ = minimax(model_clone, depth-1, alpha, beta, False)
             if evaluation > max_eval:
                 max_eval = evaluation
                 best_moves = [move]
@@ -59,7 +60,7 @@ def minimax(model, depth, alpha, beta, maximizing_player, closed_morris):
         for move in model.legal_moves(player=2):
             model_clone = model.clone()
             model_clone.make_move(player=2, move=move)
-            evaluation, _ = minimax(model_clone, depth-1, alpha, beta, True, False if move[2] == 0 else True)
+            evaluation, _ = minimax(model_clone, depth-1, alpha, beta, True)
             if evaluation < min_eval:
                 min_eval = evaluation
                 best_moves = [move]
@@ -70,13 +71,11 @@ def minimax(model, depth, alpha, beta, maximizing_player, closed_morris):
                 break
         return min_eval, random.choice(best_moves) if best_moves else None
     
-def evaluate(model, maximizing_player, closed_morris):
-    player = 1 if maximizing_player else 2
+def evaluate(model, player):
     state = model.get_state()
     phase = model.get_phase(player)
     if(phase == 'placing'):
         evaluation = (
-            18 * 1 if closed_morris else 0 + 
             26 * count_morrises(state, player) +
             blocked_pieces(state, player) +
             6 * model.count_pieces(player) +
@@ -84,18 +83,19 @@ def evaluate(model, maximizing_player, closed_morris):
         )
     elif(phase == 'moving'):
         evaluation = (
-            14 * 1 if closed_morris else 0 + 
             43 * count_morrises(state, player) +
             10 * blocked_pieces(state, player) +
             8 * model.count_pieces(player) +
-            1086 * win
+            1086 * win(model, player)
         )
     else:
         evaluation = (
-            10 * two_piece_configuration +
-            16 * closed_morris +
-            1190 * win
+            10 * two_piece_configuration(state, player) +
+            1190 * win(model, player)
         )
+
+    return evaluation
+
 
 def count_morrises(state, player):
     count = 0
@@ -130,9 +130,11 @@ def win(model, player):
         
     return 0
 
+delay = False
 
 env = mill.env(render_mode="human")
-#env = DelayMove(env, time_limit=100)
+if delay:
+    env = DelayMove(env, time_limit=100)
 env.reset()
 
 morris_lines = [
@@ -157,14 +159,15 @@ for agent in env.agent_iter():
         print("The game was too long!")
         break
 
-
-    #model = mill.transition_model(env.env) #Ako DelayMove ukljucen, onda ovaj model, ako ne onda drugi
-    model = mill.transition_model(env)
+    if delay:
+        model = mill.transition_model(env.env) #Ako DelayMove ukljucen, onda ovaj model, ako ne onda drugi
+    else:
+        model = mill.transition_model(env)
     
-    eval, move = minimax(model, 4, float('-inf'), float('inf'), True if agent=="player_1" else False, False)
+    eval, move = minimax(model, 4, float('-inf'), float('inf'), True if agent=="player_1" else False)
 
     #print(model)
-    #print(eval, move)
+    print(eval, move)
 
     env.step(move)
 
