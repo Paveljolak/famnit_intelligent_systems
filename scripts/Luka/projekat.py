@@ -73,19 +73,29 @@ def minimax(model, depth, alpha, beta, maximizing_player, closed_morris):
 def evaluate(model, maximizing_player, closed_morris):
     player = 1 if maximizing_player else 2
     state = model.get_state()
-    if(model.get_phase(player) == 'placing'):
-        return (
+    phase = model.get_phase(player)
+    if(phase == 'placing'):
+        evaluation = (
             18 * 1 if closed_morris else 0 + 
             26 * count_morrises(state, player) +
             blocked_pieces(state, player) +
-            6 * state.count_pieces(player) +
+            6 * model.count_pieces(player) +
             12 * two_piece_configuration(state, player)
         )
-    #elif(model.get_phase(player) == 'moving'):
-
+    elif(phase == 'moving'):
+        evaluation = (
+            14 * 1 if closed_morris else 0 + 
+            43 * count_morrises(state, player) +
+            10 * blocked_pieces(state, player) +
+            8 * model.count_pieces(player) +
+            1086 * win
+        )
     else:
-
-        return 0
+        evaluation = (
+            10 * two_piece_configuration +
+            16 * closed_morris +
+            1190 * win
+        )
 
 def count_morrises(state, player):
     count = 0
@@ -112,8 +122,17 @@ def two_piece_configuration(state, player):
             count += 1
     return count
 
+def win(model, player):
+    opponent = 2 if player == 1 else 1
+
+    if model.count_pieces(opponent) < 3 or model.legal_moves(opponent) == []:
+        return 1
+        
+    return 0
+
+
 env = mill.env(render_mode="human")
-env = DelayMove(env, time_limit=100)
+#env = DelayMove(env, time_limit=100)
 env.reset()
 
 morris_lines = [
@@ -139,10 +158,10 @@ for agent in env.agent_iter():
         break
 
 
-    model = mill.transition_model(env.env) #Ako DelayMove ukljucen, onda ovaj model, ako ne onda drugi
-    #model = mill.transition_model(env)
+    #model = mill.transition_model(env.env) #Ako DelayMove ukljucen, onda ovaj model, ako ne onda drugi
+    model = mill.transition_model(env)
     
-    eval, move = minimax(model, 3, float('-inf'), float('inf'), True if agent=="player_1" else False, False)
+    eval, move = minimax(model, 4, float('-inf'), float('inf'), True if agent=="player_1" else False, False)
 
     #print(model)
     #print(eval, move)
