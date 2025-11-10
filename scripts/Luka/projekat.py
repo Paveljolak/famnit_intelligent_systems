@@ -76,10 +76,10 @@ def evaluate(model, player):
     phase = model.get_phase(player)
     if(phase == 'placing'):
         evaluation = (
-            26 * count_morrises(state, player) +
+            count_morrises(state, player) +
             blocked_pieces(state, player) +
-            6 * model.count_pieces(player) +
-            12 * two_piece_configuration(state, player)
+            model.count_pieces(player) +
+            two_piece_configuration(state, player)
         )
     elif(phase == 'moving'):
         evaluation = (
