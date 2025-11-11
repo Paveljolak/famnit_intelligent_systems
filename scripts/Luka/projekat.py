@@ -34,11 +34,17 @@ from famnit_gym.wrappers.mill import DelayMove
 import random
 
 def minimax(model, depth, alpha, beta, maximizing_player):
-    if (depth==0 or model.game_over()):
+    if model.game_over():
+        if maximizing_player:
+            eval = 10000
+        else:
+            eval= -10000
+        return eval, None
+    elif depth == 0:
         eval_p1 = evaluate(model, 1)
         eval_p2 = evaluate(model, 2)
         return eval_p1-eval_p2, None
-    if maximizing_player:
+    elif maximizing_player:
         max_eval = float('-inf')
         best_moves = []
         for move in model.legal_moves(player=1):
@@ -76,22 +82,21 @@ def evaluate(model, player):
     phase = model.get_phase(player)
     if(phase == 'placing'):
         evaluation = (
-            count_morrises(state, player) +
-            blocked_pieces(state, player) +
-            model.count_pieces(player) +
-            two_piece_configuration(state, player)
+            20 * count_morrises(state, player) +
+            11 * blocked_pieces(state, player) +
+            8 * model.count_pieces(player) +
+            10 * two_piece_configuration(state, player)
         )
     elif(phase == 'moving'):
         evaluation = (
             43 * count_morrises(state, player) +
             10 * blocked_pieces(state, player) +
-            8 * model.count_pieces(player) +
-            1086 * win(model, player)
+            8 * model.count_pieces(player)
         )
     else:
         evaluation = (
-            10 * two_piece_configuration(state, player) +
-            1190 * win(model, player)
+            15 * model.count_pieces(player) + 
+            10 * two_piece_configuration(state, player)
         )
 
     return evaluation
@@ -166,8 +171,7 @@ for agent in env.agent_iter():
     
     eval, move = minimax(model, 4, float('-inf'), float('inf'), True if agent=="player_1" else False)
 
-    #print(model)
-    print(eval, move)
+    #print(eval, move)
 
     env.step(move)
 
