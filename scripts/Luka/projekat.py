@@ -30,9 +30,102 @@
 
 import gymnasium as gym
 from famnit_gym.envs import mill
-from famnit_gym.wrappers.mill import DelayMove
+from famnit_gym.wrappers.mill import DelayMove, Video
 import random
 
+def minimax(model, depth, alpha, beta, maximizing_player):
+    if model.game_over():
+        if maximizing_player:
+            eval = -10000
+        else:
+            eval= 10000
+        return eval, None
+    elif depth == 0:
+        eval_p1 = evaluate(model, 1)
+        eval_p2 = evaluate(model, 2)
+        return eval_p1-eval_p2, None
+    elif maximizing_player:
+        max_eval = float('-inf')
+        best_moves = []
+        for move in model.legal_moves(player=1):
+            model_clone = model.clone()
+            model_clone.make_move(player=1, move=move)
+            evaluation, _ = minimax(model_clone, depth-1, alpha, beta, False)
+            if evaluation > max_eval:
+                max_eval = evaluation
+                best_moves = [move]
+            elif evaluation == max_eval:
+                best_moves.append(move)
+            alpha = max(alpha, max_eval )
+            if beta <= alpha:
+                break
+        return max_eval, random.choice(best_moves) if best_moves else None
+    else:
+        min_eval = float('inf')
+        best_moves = []
+        for move in model.legal_moves(player=2):
+            model_clone = model.clone()
+            model_clone.make_move(player=2, move=move)
+            evaluation, _ = minimax(model_clone, depth-1, alpha, beta, True)
+            if evaluation < min_eval:
+                min_eval = evaluation
+                best_moves = [move]
+            elif evaluation == min_eval:
+                best_moves.append(move)
+            beta = min(beta, min_eval)
+            if beta <= alpha:
+                break
+        return min_eval, random.choice(best_moves) if best_moves else None
+    
+def evaluate(model, player):
+    state = model.get_state()
+    phase = model.get_phase(player)
+    if(phase == 'placing'):
+        evaluation = (
+            20 * count_morrises(state, player) +
+            8 * blocked_pieces(state, player) +
+            8 * model.count_pieces(player) +
+            10 * two_piece_configuration(state, player)
+        )
+    elif(phase == 'moving'):
+        evaluation = (
+            40 * count_morrises(state, player) +
+            10 * blocked_pieces(state, player) +
+            8 * model.count_pieces(player)
+        )
+    else:
+        evaluation = (
+            15 * model.count_pieces(player) + 
+            10 * two_piece_configuration(state, player)
+        )
+
+    return evaluation
+
+
+def count_morrises(state, player):
+    count = 0
+    for line in morris_lines:
+        if state[line[0]] == state[line[1]] == state[line[2]] == player:
+            count += 1
+    return count
+
+def blocked_pieces(state, player):
+    opponent = 2 if player == 1 else 1
+    count = 0
+    for i in range(24):
+        for pos in adjecent_positions[i]:
+            if state[i] == opponent and pos == player:
+                count += 1
+    return count
+
+def two_piece_configuration(state, player):
+    count = 0
+    for line in morris_lines:
+        if((state[line[0]] == state[line[1]] == player and state[line[2]] == 0) or
+           (state[line[1]] == state[line[2]] == player and state[line[0]] == 0) or
+           (state[line[0]] == state[line[2]] == player and state[line[1]] == 0)):
+            count += 1
+    return count
 
 def win(model, player):
     opponent = 2 if player == 1 else 1
@@ -43,8 +136,8 @@ def win(model, player):
     return 0
 
 delay = False
-
 env = mill.env(render_mode="human")
+env = Video(env, filename='mill.mp4')
 if delay:
     env = DelayMove(env, time_limit=100)
 env.reset()
@@ -74,7 +167,7 @@ for agent in env.agent_iter():
     if delay:
         model = mill.transition_model(env.env) #Ako DelayMove ukljucen, onda ovaj model, ako ne onda drugi
     else:
-        model = mill.transition_model(env)
+        model = mill.transition_model(env.env)
     
     eval, move = minimax(model, 4, float('-inf'), float('inf'), True if agent=="player_1" else False)
 
