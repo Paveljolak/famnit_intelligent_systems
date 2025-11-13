@@ -76,10 +76,10 @@ def evaluate(model, player):
     state = model.get_state()
     phase = model.get_phase(player)
 
-    if difficulty == 1:
+    if difficulty == 1: #eval function for lowest diff
         return model.count_pieces(player)
 
-    if(phase == 'placing'):
+    if(phase == 'placing'): #different eval functions for different game phases
         evaluation = (
             20 * count_morrises(state, player) +
             8 * blocked_pieces(state, player) +
@@ -126,7 +126,7 @@ def two_piece_configuration(state, player):
             count += 1
     return count
 # -------------------------------------------------------------
-if mode == 2:
+if mode == 2: # player vs AI
     while difficulty != 1 and difficulty != 2 and difficulty != 3:
         print("Choose game difficulty: \n 1. Beginner \n 2. Intermediate \n 3. Master \n Insert 1, 2 or 3: ")
         difficulty = int(input().strip())
@@ -271,7 +271,7 @@ if mode == 2:
         env.step(move)
         # -------------------------------------------------------------
 
-elif mode == 1:
+elif mode == 1: # ai vs ai
     env = mill.env(render_mode="human")
     env.reset()
 
